@@ -30,11 +30,6 @@ WHERE
         TRY_CAST(LEFT(V.NomeFilialFranqueada, 4) AS INT) NOT BETWEEN 26 AND 99
         OR TRY_CAST(LEFT(V.NomeFilialFranqueada, 4) AS INT) = 27
     )
-    AND (
-        UPPER(COALESCE(V.AnaliseVendas, '')) LIKE '%VENDA%'
-        OR UPPER(COALESCE(V.AnaliseVendas, '')) LIKE '%DEVOL%'
-        OR UPPER(COALESCE(V.Transacao, '')) LIKE '%DEVOL%'
-    )
 GROUP BY
     TRY_CAST(LEFT(V.NomeFilialFranqueada, 4) AS INT),
     V.NomeFilialFranqueada,
