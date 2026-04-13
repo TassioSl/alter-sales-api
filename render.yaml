@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: alter-sales-api
+    runtime: python
+    plan: free
+    rootDir: alter-sales-api
+    buildCommand: pip install -e .
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.2
+      - key: LOG_LEVEL
+        value: INFO
+      - key: INBOUND_API_USERNAME
+        sync: false
+      - key: INBOUND_API_PASSWORD
+        sync: false
