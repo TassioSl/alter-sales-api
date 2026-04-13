@@ -9,6 +9,10 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 class SaleIn(BaseModel):
     sale_id: str = Field(..., min_length=1)
     coupon_number: str | None = None
+    movement_type: str = Field(default="venda", pattern="^(venda|devolucao)$")
+    sales_analysis: str | None = None
+    transaction_id: int | None = None
+    transaction_name: str | None = None
     store_id: str = Field(..., min_length=1)
     store_alias_id: int | None = Field(default=None, gt=0)
     sold_at: datetime
@@ -18,7 +22,15 @@ class SaleIn(BaseModel):
     seller_name: str = Field(..., min_length=1)
     return_id: str | None = None
 
-    @field_validator("seller_code", "seller_name", "sale_id", "store_id", "coupon_number")
+    @field_validator(
+        "seller_code",
+        "seller_name",
+        "sale_id",
+        "store_id",
+        "coupon_number",
+        "sales_analysis",
+        "transaction_name",
+    )
     @classmethod
     def strip_strings(cls, value: str | None) -> str | None:
         if value is None:
@@ -29,6 +41,8 @@ class SaleIn(BaseModel):
     def validate_return_consistency(self) -> "SaleIn":
         if self.return_id and self.total_amount > 0:
             raise ValueError("return_id informado exige total_amount negativo ou zero")
+        if self.movement_type == "devolucao" and self.total_amount > 0:
+            raise ValueError("movement_type=devolucao exige total_amount negativo ou zero")
         return self
 
 
