@@ -3,7 +3,7 @@
     {
       "sale_id": "009-20260410-110401",
       "store_id": "009-BIOMUNDO CONJUNTO NACIONAL",
-      "store_alias_id": null,
+      "store_alias_id": 9,
       "sold_at": "2026-04-10T11:04:00-03:00",
       "total_amount": 189.9,
       "items_count": 4,
@@ -14,7 +14,7 @@
     {
       "sale_id": "009-20260410-113015-DEV",
       "store_id": "009-BIOMUNDO CONJUNTO NACIONAL",
-      "store_alias_id": null,
+      "store_alias_id": 9,
       "sold_at": "2026-04-10T11:30:15-03:00",
       "total_amount": -49.9,
       "items_count": 1,

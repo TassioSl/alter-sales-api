@@ -8,7 +8,8 @@ dependencies = [
   "uvicorn[standard]>=0.35.0",
   "pydantic-settings>=2.10.0",
   "httpx>=0.28.0",
-  "loguru>=0.7.2"
+  "loguru>=0.7.2",
+  "python-tds>=1.16.0"
 ]
 
 [tool.uv]

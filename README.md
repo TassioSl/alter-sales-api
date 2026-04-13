@@ -11,9 +11,10 @@ Essa API resolve dois problemas:
 
 ## Fluxo correto
 
-1. A operacao envia um lote para `POST /api/sales/intake`.
-2. A API salva o ultimo lote localmente.
-3. O consumidor externo busca os dados em:
+1. Se `SQL_*` estiver configurado, a API consulta o DW em tempo real para montar o feed do dia.
+2. Se `SQL_*` nao estiver configurado, a operacao envia um lote para `POST /api/sales/intake`.
+3. A API salva o ultimo lote localmente como fallback.
+4. O consumidor externo busca os dados em:
    - `GET /api/alter/feed/per-hour`
    - `GET /api/alter/feed/per-store`
 
@@ -46,11 +47,20 @@ A API aceita autenticacao basica opcional para proteger os endpoints.
 
 Variaveis:
 
+- `SQL_HOST`
+- `SQL_DATABASE`
+- `SQL_USER`
+- `SQL_PASSWORD`
+- `SQL_DRIVER`
+- `LIVE_STORE_CODE`
+- `LIVE_STORE_ALIAS_ID`
 - `INBOUND_API_USERNAME`
 - `INBOUND_API_PASSWORD`
 
-Se essas duas variaveis estiverem vazias, a API nao exige autenticacao.
-Se estiverem preenchidas, os endpoints protegidos exigem `Authorization: Basic ...`.
+Se `SQL_*` estiver preenchido, os feeds e `GET /api/sales/latest` passam a consultar o banco em tempo real.
+Se `SQL_*` estiver vazio, a API usa o ultimo lote salvo via intake.
+Se `INBOUND_API_USERNAME` e `INBOUND_API_PASSWORD` estiverem vazios, a API nao exige autenticacao.
+Se estiverem preenchidos, os endpoints protegidos exigem `Authorization: Basic ...`.
 
 ## Formato de entrada
 
@@ -60,7 +70,7 @@ Se estiverem preenchidas, os endpoints protegidos exigem `Authorization: Basic .
     {
       "sale_id": "VENDA-1001",
       "store_id": "009-BIOMUNDO CONJUNTO NACIONAL",
-      "store_alias_id": null,
+      "store_alias_id": 9,
       "sold_at": "2026-04-10T11:04:00-03:00",
       "total_amount": 189.90,
       "items_count": 4,
@@ -84,8 +94,8 @@ Arquivo:
 
 Observacao:
 
-- o `store_alias_id` ainda precisa ser confirmado se o consumidor externo precisar dele
-- enquanto isso nao estiver confirmado, mantenha `store_alias_id` como `null`
+- o `store_alias_id` precisa estar preenchido para o feed por loja
+- o default configurado para a loja 009 pode ser `9`
 
 ## Como rodar
 
@@ -140,10 +150,17 @@ Arquivos prontos:
 
 Segredos necessarios no Render:
 
+- `SQL_HOST`
+- `SQL_DATABASE`
+- `SQL_USER`
+- `SQL_PASSWORD`
+- `SQL_DRIVER`
+- `LIVE_STORE_CODE`
+- `LIVE_STORE_ALIAS_ID`
 - `INBOUND_API_USERNAME`
 - `INBOUND_API_PASSWORD`
 
 ## Observacoes
 
 - Para a loja `009-BIOMUNDO CONJUNTO NACIONAL`, o ideal e validar se o alias corresponde exatamente ao ponto ja integrado `Bio Mundo CNB 09`.
-- O payload por hora continua sendo o caminho mais seguro para o primeiro teste.
+- Com `SQL_*` configurado, `GET /api/alter/feed/per-hour` e `GET /api/alter/feed/per-store` passam a refletir as vendas do dia consultadas no DW.

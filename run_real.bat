@@ -7,7 +7,7 @@ set "API_PORT=8091"
 set "ALTER_SALES_API_URL=http://127.0.0.1:%API_PORT%"
 set "API_LOG=%~dp0data\run_api.log"
 set "STORE_CODE=9"
-for /f %%I in ('powershell -NoProfile -Command "(Get-Date).AddDays(-1).ToString(\"yyyy-MM-dd\")"') do set "RUN_DATE=%%I"
+for /f %%I in ('powershell -NoProfile -Command "(Get-Date).ToString(\"yyyy-MM-dd\")"') do set "RUN_DATE=%%I"
 
 echo ========================================
 echo Alter Sales API - Teste Real

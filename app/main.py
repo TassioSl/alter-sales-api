@@ -6,6 +6,8 @@ from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBasicCredentials
 
 from .config import settings
+from .db import test_connection
+from .live_sales import build_live_envelope_today, live_sales_enabled
 from .logging_setup import configure_logging, logger
 from .schemas import (
     AlterPerHourPreview,
@@ -56,7 +58,12 @@ def _require_auth(credentials: HTTPBasicCredentials | None) -> None:
     require_basic_auth(credentials)
 
 
-def _latest_payload_or_404() -> SalesIntakeRequest:
+def _active_payload_or_404() -> SalesIntakeRequest:
+    if live_sales_enabled():
+        payload = build_live_envelope_today().payload
+        if not payload.sales:
+            raise HTTPException(status_code=404, detail="Nenhuma venda encontrada no banco para hoje")
+        return payload
     latest = load_latest_sales()
     if latest is None:
         raise HTTPException(status_code=404, detail="Nenhum lote de vendas armazenado")
@@ -78,12 +85,17 @@ async def unhandled_exception_handler(request: Request, exc: Exception):  # noqa
 @app.get("/api/health")
 def health() -> dict:
     latest = load_latest_sales()
+    db_status = test_connection() if live_sales_enabled() else {"ok": False, "error": "Variaveis SQL_* ausentes"}
     return {
         "status": "ok",
         "api_host": settings.api_host,
         "api_port": settings.api_port,
         "disable_inbound_auth": settings.disable_inbound_auth,
         "inbound_auth_configured": bool(settings.inbound_api_username and settings.inbound_api_password),
+        "live_sales_enabled": live_sales_enabled(),
+        "live_store_code": settings.live_store_code,
+        "live_store_alias_id": settings.live_store_alias_id,
+        "db_status": db_status,
         "latest_sales_loaded": latest is not None,
     }
 
@@ -104,6 +116,11 @@ def sales_intake(
 @app.get("/api/sales/latest", response_model=StoredSalesEnvelope)
 def sales_latest(credentials: HTTPBasicCredentials | None = Depends(security)):
     _require_auth(credentials)
+    if live_sales_enabled():
+        envelope = build_live_envelope_today()
+        if not envelope.payload.sales:
+            raise HTTPException(status_code=404, detail="Nenhuma venda encontrada no banco para hoje")
+        return envelope
     latest = load_latest_sales()
     if latest is None:
         raise HTTPException(status_code=404, detail="Nenhum lote de vendas armazenado")
@@ -140,7 +157,7 @@ def preview_per_store(
 @app.get("/api/alter/feed/per-hour", response_model=AlterPerHourPreview)
 def feed_per_hour(credentials: HTTPBasicCredentials | None = Depends(security)):
     _require_auth(credentials)
-    payload = _latest_payload_or_404()
+    payload = _active_payload_or_404()
     logger.info("Entregando feed por hora com {} vendas", len(payload.sales))
     return build_per_hour_preview(payload)
 
@@ -149,7 +166,7 @@ def feed_per_hour(credentials: HTTPBasicCredentials | None = Depends(security)):
 def feed_per_store(credentials: HTTPBasicCredentials | None = Depends(security)):
     _require_auth(credentials)
     try:
-        payload = _latest_payload_or_404()
+        payload = _active_payload_or_404()
         logger.info("Entregando feed por loja com {} vendas", len(payload.sales))
         return build_per_store_preview(payload)
     except ValueError as exc:
