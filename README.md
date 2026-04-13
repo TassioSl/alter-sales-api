@@ -24,12 +24,16 @@ Ela apenas publica os dados para serem consumidos.
 ## Campos internos cobertos
 
 - valor da venda
+- numero do cupom
 - itens por venda
 - codigo do vendedor
 - nome do vendedor
 - horario da venda
 - identificador da loja
 - identificador de devolucao
+- tipo do movimento: `venda` ou `devolucao`
+- analise da venda
+- id e nome da transacao
 
 ## Endpoints
 
@@ -37,6 +41,7 @@ Ela apenas publica os dados para serem consumidos.
 - `GET /api/health`
 - `POST /api/sales/intake`
 - `GET /api/sales/latest`
+- `GET /api/sales/latest?start_date=2026-04-01&end_date=2026-04-10`
 - `POST /api/alter/preview/per-hour`
 - `POST /api/alter/preview/per-store`
 - `GET /api/alter/feed/per-hour`
@@ -63,6 +68,7 @@ Se `SQL_*` estiver preenchido, os feeds e `GET /api/sales/latest` passam a consu
 Se `SQL_*` estiver vazio, a API usa o ultimo lote salvo via intake.
 Se `INBOUND_API_USERNAME` e `INBOUND_API_PASSWORD` estiverem vazios, a API nao exige autenticacao.
 Se estiverem preenchidos, os endpoints protegidos exigem `Authorization: Basic ...`.
+Para buscar um periodo especifico, use `GET /api/sales/latest?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD`.
 
 ## Formato de entrada
 
@@ -71,6 +77,11 @@ Se estiverem preenchidos, os endpoints protegidos exigem `Authorization: Basic .
   "sales": [
     {
       "sale_id": "VENDA-1001",
+      "coupon_number": "1001",
+      "movement_type": "venda",
+      "sales_analysis": "VENDA",
+      "transaction_id": 1,
+      "transaction_name": "Venda",
       "store_id": "009-BIOMUNDO CONJUNTO NACIONAL",
       "store_alias_id": 9,
       "sold_at": "2026-04-10T11:04:00-03:00",
@@ -104,7 +115,6 @@ Scripts prontos:
 - [run_render_sync.bat](C:/Users/Bio%20Mundo/Desktop/dashboar/alter-sales-api/run_render_sync.bat)
 - [run_render_sync_loop.bat](C:/Users/Bio%20Mundo/Desktop/dashboar/alter-sales-api/run_render_sync_loop.bat)
 - [teste_com_senha.bat](C:/Users/Bio%20Mundo/Desktop/dashboar/alter-sales-api/teste_com_senha.bat)
-- [teste_sem_senha.bat](C:/Users/Bio%20Mundo/Desktop/dashboar/alter-sales-api/teste_sem_senha.bat)
 
 Para ver o feed salvo depois do intake:
 
