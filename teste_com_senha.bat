@@ -25,11 +25,13 @@ powershell -ExecutionPolicy Bypass -Command ^
   "Write-Host ''; Write-Host 'GET %BASE_URL%/api/health';" ^
   "Invoke-RestMethod -Uri '%BASE_URL%/api/health' -Headers $headers | ConvertTo-Json -Depth 10;" ^
   "Write-Host ''; Write-Host 'GET %BASE_URL%/api/sales/latest';" ^
-  "Invoke-RestMethod -Uri '%BASE_URL%/api/sales/latest' -Headers $headers | ConvertTo-Json -Depth 10;" ^
+  "try { Invoke-RestMethod -Uri '%BASE_URL%/api/sales/latest' -Headers $headers | ConvertTo-Json -Depth 10 } catch { $_ | Out-String | Write-Host };" ^
+  "Write-Host ''; Write-Host 'GET %BASE_URL%/api/sales/latest?start_date=2026-04-01&end_date=2026-04-10';" ^
+  "try { Invoke-RestMethod -Uri '%BASE_URL%/api/sales/latest?start_date=2026-04-01&end_date=2026-04-10' -Headers $headers | ConvertTo-Json -Depth 10 } catch { $_ | Out-String | Write-Host };" ^
   "Write-Host ''; Write-Host 'GET %BASE_URL%/api/alter/feed/per-hour';" ^
-  "Invoke-RestMethod -Uri '%BASE_URL%/api/alter/feed/per-hour' -Headers $headers | ConvertTo-Json -Depth 10;" ^
+  "try { Invoke-RestMethod -Uri '%BASE_URL%/api/alter/feed/per-hour' -Headers $headers | ConvertTo-Json -Depth 10 } catch { $_ | Out-String | Write-Host };" ^
   "Write-Host ''; Write-Host 'GET %BASE_URL%/api/alter/feed/per-store';" ^
-  "Invoke-RestMethod -Uri '%BASE_URL%/api/alter/feed/per-store' -Headers $headers | ConvertTo-Json -Depth 10;" > "%LOG_FILE%" 2>&1
+  "try { Invoke-RestMethod -Uri '%BASE_URL%/api/alter/feed/per-store' -Headers $headers | ConvertTo-Json -Depth 10 } catch { $_ | Out-String | Write-Host };" > "%LOG_FILE%" 2>&1
 
 set "EXIT_CODE=%ERRORLEVEL%"
 type "%LOG_FILE%"
