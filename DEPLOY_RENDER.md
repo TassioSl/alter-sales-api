@@ -36,6 +36,12 @@ O projeto ja esta configurado para subir com:
 
 ```bash
 uvicorn app.main:app --host 0.0.0.0 --port $PORT
+
+Build command recomendado:
+
+```bash
+poetry install --no-root
+```
 ```
 
 ## 5. Teste depois do deploy
