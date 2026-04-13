@@ -10,6 +10,13 @@ class DatabaseConnectionError(RuntimeError):
     pass
 
 
+def _format_db_error(exc: Exception) -> str:
+    text = str(exc).strip()
+    if text:
+        return text
+    return f"{type(exc).__name__}: {exc!r}"
+
+
 def _split_host_port(raw_host: str) -> tuple[str, int]:
     host = raw_host.strip()
     if not host:
@@ -61,7 +68,7 @@ def fetch_all_dict(query: str, params: tuple[Any, ...]) -> list[dict[str, Any]]:
             rows = cur.fetchall()
             return [dict(zip(columns, row, strict=False)) for row in rows]
     except Exception as exc:  # noqa: BLE001
-        raise DatabaseConnectionError(str(exc)) from exc
+        raise DatabaseConnectionError(_format_db_error(exc)) from exc
 
 
 def test_connection() -> dict[str, Any]:

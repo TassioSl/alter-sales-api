@@ -4,6 +4,9 @@ setlocal
 set "ROOT=%~dp0.."
 set "LOG_DIR=%ROOT%\logs"
 set "LOG_FILE=%LOG_DIR%\test_render_api.log"
+set "BASE_URL=https://alter-sales-api.onrender.com"
+set /p "TEST_USERNAME=Usuario da API: "
+set /p "TEST_PASSWORD=Senha da API: "
 
 if not exist "%LOG_DIR%" (
   mkdir "%LOG_DIR%"
@@ -14,7 +17,7 @@ echo Saida sera salva em:
 echo %LOG_FILE%
 echo.
 
-powershell -ExecutionPolicy Bypass -File "%~dp0test_render_api.ps1" > "%LOG_FILE%" 2>&1
+powershell -ExecutionPolicy Bypass -File "%~dp0test_render_api.ps1" -BaseUrl "%BASE_URL%" -Username "%TEST_USERNAME%" -Password "%TEST_PASSWORD%" > "%LOG_FILE%" 2>&1
 set "EXIT_CODE=%ERRORLEVEL%"
 
 type "%LOG_FILE%"

@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBasicCredentials
 
 from .config import settings
-from .db import test_connection
+from .db import DatabaseConnectionError, test_connection
 from .live_sales import build_live_envelope_today, live_sales_enabled
 from .logging_setup import configure_logging, logger
 from .schemas import (
@@ -60,7 +60,10 @@ def _require_auth(credentials: HTTPBasicCredentials | None) -> None:
 
 def _active_payload_or_404() -> SalesIntakeRequest:
     if live_sales_enabled():
-        payload = build_live_envelope_today().payload
+        try:
+            payload = build_live_envelope_today().payload
+        except DatabaseConnectionError as exc:
+            raise HTTPException(status_code=503, detail=f"Falha ao consultar banco: {exc}") from exc
         if not payload.sales:
             raise HTTPException(status_code=404, detail="Nenhuma venda encontrada no banco para hoje")
         return payload
@@ -117,7 +120,10 @@ def sales_intake(
 def sales_latest(credentials: HTTPBasicCredentials | None = Depends(security)):
     _require_auth(credentials)
     if live_sales_enabled():
-        envelope = build_live_envelope_today()
+        try:
+            envelope = build_live_envelope_today()
+        except DatabaseConnectionError as exc:
+            raise HTTPException(status_code=503, detail=f"Falha ao consultar banco: {exc}") from exc
         if not envelope.payload.sales:
             raise HTTPException(status_code=404, detail="Nenhuma venda encontrada no banco para hoje")
         return envelope
