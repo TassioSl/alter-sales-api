@@ -86,68 +86,34 @@ Se estiverem preenchidos, os endpoints protegidos exigem `Authorization: Basic .
 
 ## Loja preparada
 
-O projeto ja ficou preparado com um exemplo da loja:
+Loja padrao configurada:
 
-- `009-BIOMUNDO CONJUNTO NACIONAL`
+- `009 - BIOMUNDO CONJUNTO NACIONAL`
+- `store_alias_id = 9`
 
-Arquivo:
+## Operacao
 
-- [examples/store-009-conjunto-nacional.json](C:/Users/Bio%20Mundo/Desktop/dashboar/alter-sales-api/examples/store-009-conjunto-nacional.json)
-
-Observacao:
-
-- o `store_alias_id` precisa estar preenchido para o feed por loja
-- o default configurado para a loja 009 pode ser `9`
-
-## Como rodar
-
-```powershell
-cd C:\Users\Bio Mundo\Desktop\dashboar\alter-sales-api
-python -m venv .venv
-.venv\Scripts\activate
-pip install -e .
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8010
-```
-
-## Como ver a saida antes
-
-Ordem recomendada:
-
-1. `POST /api/sales/intake`
-2. `POST /api/alter/preview/per-hour`
-3. `POST /api/alter/preview/per-store`
-4. `GET /api/alter/feed/per-hour`
-5. `GET /api/alter/feed/per-store`
-
-Script pronto:
-
-- [scripts/test_store_009_preview.ps1](C:/Users/Bio%20Mundo/Desktop/dashboar/alter-sales-api/scripts/test_store_009_preview.ps1)
-- [run_render_sync.bat](C:/Users/Bio%20Mundo/Desktop/dashboar/alter-sales-api/run_render_sync.bat)
-
-Exemplo:
-
-```powershell
-cd C:\Users\Bio Mundo\Desktop\dashboar\alter-sales-api
-$env:ALTER_SALES_API_URL="http://127.0.0.1:8010"
-$env:INBOUND_API_USERNAME="admin"
-$env:INBOUND_API_PASSWORD="senha-forte"
-.\scripts\test_store_009_preview.ps1
-```
-
-Para ver o feed salvo depois do intake:
-
-```powershell
-$pair = "{0}:{1}" -f $env:INBOUND_API_USERNAME, $env:INBOUND_API_PASSWORD
-$token = [Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($pair))
-$headers = @{ Authorization = "Basic $token" }
-Invoke-RestMethod -Method Get -Uri "http://127.0.0.1:8010/api/alter/feed/per-hour" -Headers $headers | ConvertTo-Json -Depth 8
-```
-
-Enquanto o Render nao conseguir acesso direto ao banco, o fluxo recomendado e:
+Fluxo recomendado hoje:
 
 1. consultar o DW no ambiente interno
 2. publicar o lote real em `POST /api/sales/intake` no Render
 3. consumir os feeds do Render normalmente
+
+Scripts prontos:
+
+- [run_render_sync.bat](C:/Users/Bio%20Mundo/Desktop/dashboar/alter-sales-api/run_render_sync.bat)
+- [run_render_sync_loop.bat](C:/Users/Bio%20Mundo/Desktop/dashboar/alter-sales-api/run_render_sync_loop.bat)
+- [teste_com_senha.bat](C:/Users/Bio%20Mundo/Desktop/dashboar/alter-sales-api/teste_com_senha.bat)
+- [teste_sem_senha.bat](C:/Users/Bio%20Mundo/Desktop/dashboar/alter-sales-api/teste_sem_senha.bat)
+
+Para ver o feed salvo depois do intake:
+
+```powershell
+$pair = "biomundo_api:SUA_SENHA"
+$token = [Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($pair))
+$headers = @{ Authorization = "Basic $token" }
+Invoke-RestMethod -Method Get -Uri "https://alter-sales-api-1.onrender.com/api/alter/feed/per-hour" -Headers $headers | ConvertTo-Json -Depth 8
+```
 
 ## Deploy no Render
 

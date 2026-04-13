@@ -36,12 +36,12 @@ O projeto ja esta configurado para subir com:
 
 ```bash
 uvicorn app.main:app --host 0.0.0.0 --port $PORT
+```
 
 Build command recomendado:
 
 ```bash
 poetry install --no-root
-```
 ```
 
 ## 5. Teste depois do deploy
@@ -52,7 +52,10 @@ Troque `SUA-URL` pela URL gerada pelo Render:
 $env:ALTER_SALES_API_URL="https://SUA-URL.onrender.com"
 $env:INBOUND_API_USERNAME="admin"
 $env:INBOUND_API_PASSWORD="sua-senha"
-.\scripts\test_store_009_preview.ps1
+$pair = "{0}:{1}" -f $env:INBOUND_API_USERNAME, $env:INBOUND_API_PASSWORD
+$token = [Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($pair))
+$headers = @{ Authorization = "Basic $token" }
+Invoke-RestMethod -Method Get -Uri "$env:ALTER_SALES_API_URL/api/health" -Headers $headers | ConvertTo-Json -Depth 8
 ```
 
 ## 6. Ordem certa de validacao
