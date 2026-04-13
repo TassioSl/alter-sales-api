@@ -63,6 +63,7 @@ Invoke-RestMethod -Method Get -Uri "$env:ALTER_SALES_API_URL/api/health" -Header
 1. testar `GET /api/health`
 2. testar `POST /api/sales/intake`
 3. testar `GET /api/sales/latest`
+4. testar `GET /api/sales/latest?start_date=2026-04-01&end_date=2026-04-10`
 4. testar `GET /api/alter/feed/per-hour`
 5. testar `GET /api/alter/feed/per-store`
 
