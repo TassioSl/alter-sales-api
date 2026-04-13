@@ -85,6 +85,7 @@ def build_payload(start_date: date, end_date: date, store_code: int, store_alias
         sales.append(
             {
                 "sale_id": f"{store_code}-{documento}-{sold_at_str}",
+                "coupon_number": documento,
                 "store_id": str(row.get("nome_filial") or f"{store_code:03d}"),
                 "store_alias_id": store_alias_id,
                 "sold_at": sold_at_str,

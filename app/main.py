@@ -18,6 +18,7 @@ from .schemas import (
 )
 from .security import require_basic_auth, security
 from .service import build_intake_response, build_per_hour_preview, build_per_store_preview
+from .service import summarize_payload
 from .storage import load_latest_sales, save_latest_sales
 
 
@@ -69,10 +70,26 @@ def _active_payload_or_404() -> SalesIntakeRequest:
     if live_sales_enabled():
         try:
             payload = build_live_envelope_today().payload
+            summary = summarize_payload(payload)
+            logger.info(
+                "Usando payload ao vivo do banco | total_sales={} total_stores={} total_amount={} coupons_count={}",
+                summary["total_sales"],
+                summary["total_stores"],
+                summary["total_amount"],
+                summary["coupons_count"],
+            )
         except DatabaseConnectionError as exc:
             fallback_payload = _latest_saved_payload_or_none()
             if fallback_payload is not None:
-                logger.warning("Banco indisponivel ({}). Usando ultimo lote salvo via intake.", exc)
+                summary = summarize_payload(fallback_payload)
+                logger.warning(
+                    "Banco indisponivel ({}). Usando ultimo lote salvo via intake | total_sales={} total_stores={} total_amount={} coupons_count={}",
+                    exc,
+                    summary["total_sales"],
+                    summary["total_stores"],
+                    summary["total_amount"],
+                    summary["coupons_count"],
+                )
                 return fallback_payload
             raise HTTPException(status_code=503, detail=f"Falha ao consultar banco: {exc}") from exc
         if not payload.sales:
@@ -81,6 +98,14 @@ def _active_payload_or_404() -> SalesIntakeRequest:
     fallback_payload = _latest_saved_payload_or_none()
     if fallback_payload is None:
         raise HTTPException(status_code=404, detail="Nenhum lote de vendas armazenado")
+    summary = summarize_payload(fallback_payload)
+    logger.info(
+        "Usando payload salvo | total_sales={} total_stores={} total_amount={} coupons_count={}",
+        summary["total_sales"],
+        summary["total_stores"],
+        summary["total_amount"],
+        summary["coupons_count"],
+    )
     return fallback_payload
 
 
@@ -138,7 +163,14 @@ def sales_intake(
     _require_auth(credentials)
     if not payload.sales:
         raise HTTPException(status_code=400, detail="sales nao pode ser vazio")
-    logger.info("Recebido lote com {} vendas para intake", len(payload.sales))
+    summary = summarize_payload(payload)
+    logger.info(
+        "Recebido lote para intake | total_sales={} total_stores={} total_amount={} coupons_count={}",
+        summary["total_sales"],
+        summary["total_stores"],
+        summary["total_amount"],
+        summary["coupons_count"],
+    )
     save_latest_sales(payload)
     return build_intake_response(payload)
 
@@ -149,10 +181,26 @@ def sales_latest(credentials: HTTPBasicCredentials | None = Depends(security)):
     if live_sales_enabled():
         try:
             envelope = build_live_envelope_today()
+            summary = summarize_payload(envelope.payload)
+            logger.info(
+                "Retornando sales/latest do banco | total_sales={} total_stores={} total_amount={} coupons_count={}",
+                summary["total_sales"],
+                summary["total_stores"],
+                summary["total_amount"],
+                summary["coupons_count"],
+            )
         except DatabaseConnectionError as exc:
             latest = load_latest_sales()
             if latest is not None:
-                logger.warning("Banco indisponivel ({}). Retornando ultimo lote salvo via intake.", exc)
+                summary = summarize_payload(latest.payload)
+                logger.warning(
+                    "Banco indisponivel ({}). Retornando ultimo lote salvo via intake | total_sales={} total_stores={} total_amount={} coupons_count={}",
+                    exc,
+                    summary["total_sales"],
+                    summary["total_stores"],
+                    summary["total_amount"],
+                    summary["coupons_count"],
+                )
                 return latest
             raise HTTPException(status_code=503, detail=f"Falha ao consultar banco: {exc}") from exc
         if not envelope.payload.sales:

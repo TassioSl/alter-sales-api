@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 class SaleIn(BaseModel):
     sale_id: str = Field(..., min_length=1)
+    coupon_number: str | None = None
     store_id: str = Field(..., min_length=1)
     store_alias_id: int | None = Field(default=None, gt=0)
     sold_at: datetime
@@ -17,9 +18,11 @@ class SaleIn(BaseModel):
     seller_name: str = Field(..., min_length=1)
     return_id: str | None = None
 
-    @field_validator("seller_code", "seller_name", "sale_id", "store_id")
+    @field_validator("seller_code", "seller_name", "sale_id", "store_id", "coupon_number")
     @classmethod
-    def strip_strings(cls, value: str) -> str:
+    def strip_strings(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
         return value.strip()
 
     @model_validator(mode="after")
@@ -66,6 +69,7 @@ class AlterPerHourPreview(BaseModel):
 class AlterPerStoreSaleItem(BaseModel):
     localDate: str
     total: Decimal
+    couponNumber: str | None = None
 
 
 class AlterPerStorePreviewItem(BaseModel):

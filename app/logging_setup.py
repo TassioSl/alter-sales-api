@@ -16,7 +16,7 @@ def configure_logging() -> None:
         enqueue=True,
         backtrace=False,
         diagnose=False,
-        format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level:<8} | {message}",
+        format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level:<8} | {name}:{function}:{line} | {message}",
     )
 
     log_dir = settings.base_dir / "logs"
@@ -29,7 +29,7 @@ def configure_logging() -> None:
         enqueue=True,
         backtrace=False,
         diagnose=False,
-        format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level:<8} | {message}",
+        format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level:<8} | {name}:{function}:{line} | {message}",
     )
 
 

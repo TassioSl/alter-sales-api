@@ -31,6 +31,20 @@ def build_intake_response(payload: SalesIntakeRequest) -> SalesIntakeResponse:
     )
 
 
+def summarize_payload(payload: SalesIntakeRequest) -> dict[str, int | Decimal]:
+    total_amount = sum((sale.total_amount for sale in payload.sales), start=Decimal("0"))
+    returns_count = sum(1 for sale in payload.sales if sale.return_id or sale.total_amount <= 0)
+    total_stores = len({sale.store_id for sale in payload.sales})
+    coupons_count = sum(1 for sale in payload.sales if sale.coupon_number)
+    return {
+        "total_sales": len(payload.sales),
+        "total_stores": total_stores,
+        "total_amount": total_amount,
+        "returns_count": returns_count,
+        "coupons_count": coupons_count,
+    }
+
+
 def build_per_hour_preview(payload: SalesIntakeRequest) -> AlterPerHourPreview:
     grouped: dict[tuple[str, int], dict[str, Decimal | int]] = defaultdict(
         lambda: {"total": Decimal("0"), "nbItems": 0, "nbSales": 0}
@@ -70,6 +84,7 @@ def build_per_store_preview(payload: SalesIntakeRequest) -> AlterPerStorePreview
             AlterPerStoreSaleItem(
                 localDate=sale.sold_at.isoformat(),
                 total=sale.total_amount,
+                couponNumber=sale.coupon_number,
             )
         )
 
