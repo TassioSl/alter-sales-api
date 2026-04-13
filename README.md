@@ -33,6 +33,7 @@ Ela apenas publica os dados para serem consumidos.
 
 ## Endpoints
 
+- `GET /`
 - `GET /api/health`
 - `POST /api/sales/intake`
 - `GET /api/sales/latest`
@@ -40,6 +41,7 @@ Ela apenas publica os dados para serem consumidos.
 - `POST /api/alter/preview/per-store`
 - `GET /api/alter/feed/per-hour`
 - `GET /api/alter/feed/per-store`
+- `GET /docs`
 
 ## Seguranca minima
 
