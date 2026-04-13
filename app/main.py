@@ -67,7 +67,22 @@ def _latest_saved_payload_or_none() -> SalesIntakeRequest | None:
     return latest.payload
 
 
+def _latest_saved_envelope_or_none() -> StoredSalesEnvelope | None:
+    return load_latest_sales()
+
+
 def _active_payload_or_404() -> SalesIntakeRequest:
+    fallback_payload = _latest_saved_payload_or_none()
+    if fallback_payload is not None:
+        summary = summarize_payload(fallback_payload)
+        logger.info(
+            "Usando payload salvo | total_sales={} total_stores={} total_amount={} coupons_count={}",
+            summary["total_sales"],
+            summary["total_stores"],
+            summary["total_amount"],
+            summary["coupons_count"],
+        )
+        return fallback_payload
     if live_sales_enabled():
         try:
             payload = build_live_envelope_today().payload
@@ -79,35 +94,12 @@ def _active_payload_or_404() -> SalesIntakeRequest:
                 summary["total_amount"],
                 summary["coupons_count"],
             )
+            if not payload.sales:
+                raise HTTPException(status_code=404, detail="Nenhuma venda encontrada no banco para hoje")
+            return payload
         except DatabaseConnectionError as exc:
-            fallback_payload = _latest_saved_payload_or_none()
-            if fallback_payload is not None:
-                summary = summarize_payload(fallback_payload)
-                logger.warning(
-                    "Banco indisponivel ({}). Usando ultimo lote salvo via intake | total_sales={} total_stores={} total_amount={} coupons_count={}",
-                    exc,
-                    summary["total_sales"],
-                    summary["total_stores"],
-                    summary["total_amount"],
-                    summary["coupons_count"],
-                )
-                return fallback_payload
             raise HTTPException(status_code=503, detail=f"Falha ao consultar banco: {exc}") from exc
-        if not payload.sales:
-            raise HTTPException(status_code=404, detail="Nenhuma venda encontrada no banco para hoje")
-        return payload
-    fallback_payload = _latest_saved_payload_or_none()
-    if fallback_payload is None:
-        raise HTTPException(status_code=404, detail="Nenhum lote de vendas armazenado")
-    summary = summarize_payload(fallback_payload)
-    logger.info(
-        "Usando payload salvo | total_sales={} total_stores={} total_amount={} coupons_count={}",
-        summary["total_sales"],
-        summary["total_stores"],
-        summary["total_amount"],
-        summary["coupons_count"],
-    )
-    return fallback_payload
+    raise HTTPException(status_code=404, detail="Nenhum lote de vendas armazenado")
 
 
 @app.exception_handler(HTTPException)
@@ -188,12 +180,27 @@ def sales_latest(
         raise HTTPException(status_code=400, detail="Informe start_date e end_date juntos")
     if start_date and end_date and start_date > end_date:
         raise HTTPException(status_code=400, detail="start_date nao pode ser maior que end_date")
+    latest = _latest_saved_envelope_or_none()
+    if latest is not None:
+        filtered_payload = (
+            filter_payload_by_date_range(latest.payload, start_date, end_date)
+            if start_date and end_date
+            else latest.payload
+        )
+        summary = summarize_payload(filtered_payload)
+        logger.info(
+            "Retornando lote salvo via intake | start_date={} end_date={} total_sales={} total_stores={} total_amount={} coupons_count={}",
+            start_date,
+            end_date,
+            summary["total_sales"],
+            summary["total_stores"],
+            summary["total_amount"],
+            summary["coupons_count"],
+        )
+        return StoredSalesEnvelope(created_at=latest.created_at, payload=filtered_payload)
     if live_sales_enabled():
         try:
-            if start_date and end_date:
-                envelope = build_live_envelope(start_date, end_date)
-            else:
-                envelope = build_live_envelope_today()
+            envelope = build_live_envelope(start_date, end_date) if start_date and end_date else build_live_envelope_today()
             summary = summarize_payload(envelope.payload)
             logger.info(
                 "Retornando sales/latest do banco | start_date={} end_date={} total_sales={} total_stores={} total_amount={} coupons_count={}",
@@ -204,34 +211,12 @@ def sales_latest(
                 summary["total_amount"],
                 summary["coupons_count"],
             )
+            if not envelope.payload.sales:
+                raise HTTPException(status_code=404, detail="Nenhuma venda encontrada no banco para hoje")
+            return envelope
         except DatabaseConnectionError as exc:
-            latest = load_latest_sales()
-            if latest is not None:
-                filtered_payload = (
-                    filter_payload_by_date_range(latest.payload, start_date, end_date)
-                    if start_date and end_date
-                    else latest.payload
-                )
-                summary = summarize_payload(filtered_payload)
-                logger.warning(
-                    "Banco indisponivel ({}). Retornando lote salvo via intake | start_date={} end_date={} total_sales={} total_stores={} total_amount={} coupons_count={}",
-                    exc,
-                    start_date,
-                    end_date,
-                    summary["total_sales"],
-                    summary["total_stores"],
-                    summary["total_amount"],
-                    summary["coupons_count"],
-                )
-                return StoredSalesEnvelope(created_at=latest.created_at, payload=filtered_payload)
             raise HTTPException(status_code=503, detail=f"Falha ao consultar banco: {exc}") from exc
-        if not envelope.payload.sales:
-            raise HTTPException(status_code=404, detail="Nenhuma venda encontrada no banco para hoje")
-        return envelope
-    latest = load_latest_sales()
-    if latest is None:
-        raise HTTPException(status_code=404, detail="Nenhum lote de vendas armazenado")
-    return latest
+    raise HTTPException(status_code=404, detail="Nenhum lote de vendas armazenado")
 
 
 @app.post("/api/alter/preview/per-hour", response_model=AlterPerHourPreview)
