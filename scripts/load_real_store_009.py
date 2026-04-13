@@ -37,6 +37,9 @@ SELECT
     V.NomeFilialFranqueada AS nome_filial,
     CAST(V.Hora AS datetime) AS data_hora,
     V.DocumentoNumero AS documento_numero,
+    MAX(V.IdTransacao) AS id_transacao,
+    MAX(V.Transacao) AS nome_transacao,
+    MAX(V.AnaliseVendas) AS analise_vendas,
     SUM(V.VLiquido) AS valor_liquido,
     SUM(V.QItem) AS qtde_itens,
     MAX(V.VendedorCodigo) AS vendedor_codigo,
@@ -47,10 +50,14 @@ WHERE
     V.Movimento >= ?
     AND V.Movimento < ?
     AND TRY_CAST(LEFT(V.NomeFilialFranqueada, 4) AS INT) = ?
-    AND V.IdTransacao NOT IN (3, 6, 7, 8, 10)
     AND (
         TRY_CAST(LEFT(V.NomeFilialFranqueada, 4) AS INT) NOT BETWEEN 26 AND 99
         OR TRY_CAST(LEFT(V.NomeFilialFranqueada, 4) AS INT) = 27
+    )
+    AND (
+        UPPER(COALESCE(V.AnaliseVendas, '')) LIKE '%VENDA%'
+        OR UPPER(COALESCE(V.AnaliseVendas, '')) LIKE '%DEVOL%'
+        OR UPPER(COALESCE(V.Transacao, '')) LIKE '%DEVOL%'
     )
 GROUP BY
     TRY_CAST(LEFT(V.NomeFilialFranqueada, 4) AS INT),
@@ -59,6 +66,15 @@ GROUP BY
     V.DocumentoNumero
 ORDER BY data_hora DESC;
 """
+
+
+def _movement_type(row: dict) -> str:
+    analysis = str(row.get("analise_vendas") or "").upper()
+    transaction_name = str(row.get("nome_transacao") or "").upper()
+    total_amount = float(row.get("valor_liquido") or 0)
+    if "DEVOL" in analysis or "DEVOL" in transaction_name or total_amount < 0:
+        return "devolucao"
+    return "venda"
 
 
 def build_payload(start_date: date, end_date: date, store_code: int, store_alias_id: int | None = None) -> dict:
@@ -82,10 +98,15 @@ def build_payload(start_date: date, end_date: date, store_code: int, store_alias
             sold_at_str = str(sold_at)
 
         documento = str(row.get("documento_numero") or "sem-documento").strip()
+        movement_type = _movement_type(row)
         sales.append(
             {
                 "sale_id": f"{store_code}-{documento}-{sold_at_str}",
                 "coupon_number": documento,
+                "movement_type": movement_type,
+                "sales_analysis": str(row.get("analise_vendas") or "").strip() or None,
+                "transaction_id": int(row["id_transacao"]) if row.get("id_transacao") is not None else None,
+                "transaction_name": str(row.get("nome_transacao") or "").strip() or None,
                 "store_id": str(row.get("nome_filial") or f"{store_code:03d}"),
                 "store_alias_id": store_alias_id,
                 "sold_at": sold_at_str,
@@ -93,7 +114,7 @@ def build_payload(start_date: date, end_date: date, store_code: int, store_alias
                 "items_count": int(float(row.get("qtde_itens") or 0)),
                 "seller_code": str(row.get("vendedor_codigo") or "0"),
                 "seller_name": str(row.get("vendedor_nome") or "NAO INFORMADO").strip(),
-                "return_id": None,
+                "return_id": documento if movement_type == "devolucao" else None,
             }
         )
     return {"sales": sales}
