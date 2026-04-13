@@ -4,7 +4,7 @@ services:
     runtime: python
     plan: free
     rootDir: alter-sales-api
-    buildCommand: pip install -e .
+    buildCommand: poetry install --no-root
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
