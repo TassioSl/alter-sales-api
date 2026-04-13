@@ -85,6 +85,22 @@ async def unhandled_exception_handler(request: Request, exc: Exception):  # noqa
     return JSONResponse(status_code=500, content={"detail": "Erro interno inesperado"})
 
 
+@app.get("/")
+def root() -> dict:
+    return {
+        "name": "Alter Sales API",
+        "status": "online",
+        "docs_url": "/docs",
+        "health_url": "/api/health",
+        "endpoints": [
+            "/api/health",
+            "/api/sales/latest",
+            "/api/alter/feed/per-hour",
+            "/api/alter/feed/per-store",
+        ],
+    }
+
+
 @app.get("/api/health")
 def health() -> dict:
     latest = load_latest_sales()
