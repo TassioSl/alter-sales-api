@@ -1,5 +1,6 @@
 from time import perf_counter
 from uuid import uuid4
+from datetime import date
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -7,7 +8,7 @@ from fastapi.security import HTTPBasicCredentials
 
 from .config import settings
 from .db import DatabaseConnectionError, test_connection
-from .live_sales import build_live_envelope_today, live_sales_enabled
+from .live_sales import build_live_envelope, build_live_envelope_today, live_sales_enabled
 from .logging_setup import configure_logging, logger
 from .schemas import (
     AlterPerHourPreview,
@@ -131,6 +132,7 @@ def root() -> dict:
         "endpoints": [
             "/api/health",
             "/api/sales/latest",
+            "/api/sales/latest?start_date=2026-04-01&end_date=2026-04-10",
             "/api/alter/feed/per-hour",
             "/api/alter/feed/per-store",
         ],
@@ -176,20 +178,35 @@ def sales_intake(
 
 
 @app.get("/api/sales/latest", response_model=StoredSalesEnvelope)
-def sales_latest(credentials: HTTPBasicCredentials | None = Depends(security)):
+def sales_latest(
+    start_date: date | None = None,
+    end_date: date | None = None,
+    credentials: HTTPBasicCredentials | None = Depends(security),
+):
     _require_auth(credentials)
+    if (start_date is None) ^ (end_date is None):
+        raise HTTPException(status_code=400, detail="Informe start_date e end_date juntos")
+    if start_date and end_date and start_date > end_date:
+        raise HTTPException(status_code=400, detail="start_date nao pode ser maior que end_date")
     if live_sales_enabled():
         try:
-            envelope = build_live_envelope_today()
+            if start_date and end_date:
+                envelope = build_live_envelope(start_date, end_date)
+            else:
+                envelope = build_live_envelope_today()
             summary = summarize_payload(envelope.payload)
             logger.info(
-                "Retornando sales/latest do banco | total_sales={} total_stores={} total_amount={} coupons_count={}",
+                "Retornando sales/latest do banco | start_date={} end_date={} total_sales={} total_stores={} total_amount={} coupons_count={}",
+                start_date,
+                end_date,
                 summary["total_sales"],
                 summary["total_stores"],
                 summary["total_amount"],
                 summary["coupons_count"],
             )
         except DatabaseConnectionError as exc:
+            if start_date and end_date:
+                raise HTTPException(status_code=503, detail=f"Falha ao consultar banco: {exc}") from exc
             latest = load_latest_sales()
             if latest is not None:
                 summary = summarize_payload(latest.payload)
