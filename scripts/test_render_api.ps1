@@ -1,7 +1,8 @@
 param(
-    [string]$BaseUrl = "https://alter-sales-api.onrender.com",
+    [string]$BaseUrl = "https://alter-sales-api-1.onrender.com",
     [string]$Username = "",
-    [string]$Password = ""
+    [string]$Password = "",
+    [switch]$IncludeIntake
 )
 
 $ErrorActionPreference = "Stop"
@@ -50,9 +51,35 @@ function Invoke-And-Print {
 
 Write-Host "BaseUrl: $BaseUrl"
 Write-Host "Usuario: $Username"
+Write-Host "Modo intake opcional: $IncludeIntake"
 
+Invoke-And-Print -Method Get -Url "$BaseUrl/"
 Invoke-And-Print -Method Get -Url "$BaseUrl/api/health"
-Invoke-And-Print -Method Post -Url "$BaseUrl/api/sales/intake" -Body $payload
-Invoke-And-Print -Method Get -Url "$BaseUrl/api/sales/latest"
-Invoke-And-Print -Method Get -Url "$BaseUrl/api/alter/feed/per-hour"
-Invoke-And-Print -Method Get -Url "$BaseUrl/api/alter/feed/per-store"
+
+if ($IncludeIntake) {
+    Invoke-And-Print -Method Post -Url "$BaseUrl/api/sales/intake" -Body $payload
+}
+
+try {
+    Invoke-And-Print -Method Get -Url "$BaseUrl/api/sales/latest"
+} catch {
+    Write-Host ""
+    Write-Host "GET $BaseUrl/api/sales/latest"
+    Write-Host $_
+}
+
+try {
+    Invoke-And-Print -Method Get -Url "$BaseUrl/api/alter/feed/per-hour"
+} catch {
+    Write-Host ""
+    Write-Host "GET $BaseUrl/api/alter/feed/per-hour"
+    Write-Host $_
+}
+
+try {
+    Invoke-And-Print -Method Get -Url "$BaseUrl/api/alter/feed/per-store"
+} catch {
+    Write-Host ""
+    Write-Host "GET $BaseUrl/api/alter/feed/per-store"
+    Write-Host $_
+}

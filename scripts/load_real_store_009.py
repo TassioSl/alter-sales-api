@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import sys
 from datetime import date, datetime, timedelta
@@ -60,7 +61,7 @@ ORDER BY data_hora DESC;
 """
 
 
-def build_payload(start_date: date, end_date: date, store_code: int) -> dict:
+def build_payload(start_date: date, end_date: date, store_code: int, store_alias_id: int | None = None) -> dict:
     rows = fetch_all_dict(
         REAL_SALES_SQL,
         (
@@ -85,7 +86,7 @@ def build_payload(start_date: date, end_date: date, store_code: int) -> dict:
             {
                 "sale_id": f"{store_code}-{documento}-{sold_at_str}",
                 "store_id": str(row.get("nome_filial") or f"{store_code:03d}"),
-                "store_alias_id": None,
+                "store_alias_id": store_alias_id,
                 "sold_at": sold_at_str,
                 "total_amount": float(row.get("valor_liquido") or 0),
                 "items_count": int(float(row.get("qtde_itens") or 0)),
@@ -97,12 +98,16 @@ def build_payload(start_date: date, end_date: date, store_code: int) -> dict:
     return {"sales": sales}
 
 
-def post_json(url: str, payload: dict) -> str:
+def post_json(url: str, payload: dict, username: str = "", password: str = "") -> str:
     body = json.dumps(payload).encode("utf-8")
+    headers = {"Content-Type": "application/json"}
+    if username and password:
+        pair = f"{username}:{password}".encode("ascii")
+        headers["Authorization"] = "Basic " + base64.b64encode(pair).decode("ascii")
     req = urllib_request.Request(
         url,
         data=body,
-        headers={"Content-Type": "application/json"},
+        headers=headers,
         method="POST",
     )
     try:
@@ -119,13 +124,16 @@ def main() -> int:
     parser.add_argument("--start-date", default=today)
     parser.add_argument("--end-date", default=today)
     parser.add_argument("--store-code", type=int, default=9)
+    parser.add_argument("--store-alias-id", type=int, default=9)
     parser.add_argument("--api-base-url", default="http://127.0.0.1:8091")
+    parser.add_argument("--api-username", default="")
+    parser.add_argument("--api-password", default="")
     parser.add_argument("--mode", choices=["payload", "intake"], default="payload")
     args = parser.parse_args()
 
     start_date = date.fromisoformat(args.start_date)
     end_date = date.fromisoformat(args.end_date)
-    payload = build_payload(start_date, end_date, args.store_code)
+    payload = build_payload(start_date, end_date, args.store_code, args.store_alias_id)
     if not payload["sales"]:
         print(
             json.dumps(
@@ -146,7 +154,7 @@ def main() -> int:
         print(json.dumps(payload, indent=2, ensure_ascii=False))
         return 0
 
-    print(post_json(f"{args.api_base_url}/api/sales/intake", payload))
+    print(post_json(f"{args.api_base_url}/api/sales/intake", payload, args.api_username, args.api_password))
     return 0
 
 

@@ -122,6 +122,7 @@ Ordem recomendada:
 Script pronto:
 
 - [scripts/test_store_009_preview.ps1](C:/Users/Bio%20Mundo/Desktop/dashboar/alter-sales-api/scripts/test_store_009_preview.ps1)
+- [run_render_sync.bat](C:/Users/Bio%20Mundo/Desktop/dashboar/alter-sales-api/run_render_sync.bat)
 
 Exemplo:
 
@@ -141,6 +142,12 @@ $token = [Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($pair)
 $headers = @{ Authorization = "Basic $token" }
 Invoke-RestMethod -Method Get -Uri "http://127.0.0.1:8010/api/alter/feed/per-hour" -Headers $headers | ConvertTo-Json -Depth 8
 ```
+
+Enquanto o Render nao conseguir acesso direto ao banco, o fluxo recomendado e:
+
+1. consultar o DW no ambiente interno
+2. publicar o lote real em `POST /api/sales/intake` no Render
+3. consumir os feeds do Render normalmente
 
 ## Deploy no Render
 

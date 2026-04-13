@@ -58,19 +58,30 @@ def _require_auth(credentials: HTTPBasicCredentials | None) -> None:
     require_basic_auth(credentials)
 
 
+def _latest_saved_payload_or_none() -> SalesIntakeRequest | None:
+    latest = load_latest_sales()
+    if latest is None:
+        return None
+    return latest.payload
+
+
 def _active_payload_or_404() -> SalesIntakeRequest:
     if live_sales_enabled():
         try:
             payload = build_live_envelope_today().payload
         except DatabaseConnectionError as exc:
+            fallback_payload = _latest_saved_payload_or_none()
+            if fallback_payload is not None:
+                logger.warning("Banco indisponivel ({}). Usando ultimo lote salvo via intake.", exc)
+                return fallback_payload
             raise HTTPException(status_code=503, detail=f"Falha ao consultar banco: {exc}") from exc
         if not payload.sales:
             raise HTTPException(status_code=404, detail="Nenhuma venda encontrada no banco para hoje")
         return payload
-    latest = load_latest_sales()
-    if latest is None:
+    fallback_payload = _latest_saved_payload_or_none()
+    if fallback_payload is None:
         raise HTTPException(status_code=404, detail="Nenhum lote de vendas armazenado")
-    return latest.payload
+    return fallback_payload
 
 
 @app.exception_handler(HTTPException)
@@ -139,6 +150,10 @@ def sales_latest(credentials: HTTPBasicCredentials | None = Depends(security)):
         try:
             envelope = build_live_envelope_today()
         except DatabaseConnectionError as exc:
+            latest = load_latest_sales()
+            if latest is not None:
+                logger.warning("Banco indisponivel ({}). Retornando ultimo lote salvo via intake.", exc)
+                return latest
             raise HTTPException(status_code=503, detail=f"Falha ao consultar banco: {exc}") from exc
         if not envelope.payload.sales:
             raise HTTPException(status_code=404, detail="Nenhuma venda encontrada no banco para hoje")
