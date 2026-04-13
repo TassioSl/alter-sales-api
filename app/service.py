@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from datetime import date
 from decimal import Decimal
 
 from .schemas import (
@@ -43,6 +44,16 @@ def summarize_payload(payload: SalesIntakeRequest) -> dict[str, int | Decimal]:
         "returns_count": returns_count,
         "coupons_count": coupons_count,
     }
+
+
+def filter_payload_by_date_range(payload: SalesIntakeRequest, start_date: date, end_date: date) -> SalesIntakeRequest:
+    return SalesIntakeRequest(
+        sales=[
+            sale
+            for sale in payload.sales
+            if start_date <= sale.sold_at.date() <= end_date
+        ]
+    )
 
 
 def build_per_hour_preview(payload: SalesIntakeRequest) -> AlterPerHourPreview:

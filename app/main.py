@@ -19,7 +19,7 @@ from .schemas import (
 )
 from .security import require_basic_auth, security
 from .service import build_intake_response, build_per_hour_preview, build_per_store_preview
-from .service import summarize_payload
+from .service import filter_payload_by_date_range, summarize_payload
 from .storage import load_latest_sales, save_latest_sales
 
 
@@ -205,20 +205,25 @@ def sales_latest(
                 summary["coupons_count"],
             )
         except DatabaseConnectionError as exc:
-            if start_date and end_date:
-                raise HTTPException(status_code=503, detail=f"Falha ao consultar banco: {exc}") from exc
             latest = load_latest_sales()
             if latest is not None:
-                summary = summarize_payload(latest.payload)
+                filtered_payload = (
+                    filter_payload_by_date_range(latest.payload, start_date, end_date)
+                    if start_date and end_date
+                    else latest.payload
+                )
+                summary = summarize_payload(filtered_payload)
                 logger.warning(
-                    "Banco indisponivel ({}). Retornando ultimo lote salvo via intake | total_sales={} total_stores={} total_amount={} coupons_count={}",
+                    "Banco indisponivel ({}). Retornando lote salvo via intake | start_date={} end_date={} total_sales={} total_stores={} total_amount={} coupons_count={}",
                     exc,
+                    start_date,
+                    end_date,
                     summary["total_sales"],
                     summary["total_stores"],
                     summary["total_amount"],
                     summary["coupons_count"],
                 )
-                return latest
+                return StoredSalesEnvelope(created_at=latest.created_at, payload=filtered_payload)
             raise HTTPException(status_code=503, detail=f"Falha ao consultar banco: {exc}") from exc
         if not envelope.payload.sales:
             raise HTTPException(status_code=404, detail="Nenhuma venda encontrada no banco para hoje")

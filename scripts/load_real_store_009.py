@@ -72,6 +72,16 @@ def _movement_type(row: dict) -> str:
     return "venda"
 
 
+def _should_include_row(row: dict) -> bool:
+    analysis = str(row.get("analise_vendas") or "").upper()
+    transaction_name = str(row.get("nome_transacao") or "").upper()
+    if "INVALID" in analysis:
+        return False
+    if "CANCELADA" in transaction_name or "CANCELADO" in transaction_name:
+        return False
+    return True
+
+
 def build_payload(start_date: date, end_date: date, store_code: int, store_alias_id: int | None = None) -> dict:
     rows = fetch_all_dict(
         REAL_SALES_SQL,
@@ -84,6 +94,8 @@ def build_payload(start_date: date, end_date: date, store_code: int, store_alias
 
     sales: list[dict] = []
     for row in rows:
+        if not _should_include_row(row):
+            continue
         sold_at = row.get("data_hora")
         if isinstance(sold_at, str):
             sold_at_str = sold_at
